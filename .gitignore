@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+data/
+models/
+
+# Large dataset folders (too big for GitHub)
+DTASET A-Z/
+continuation dataset/
+extracted_dataset_A-Z/
+problem_2_frames/
+voice_problem_frames/

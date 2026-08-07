@@ -1,0 +1,3 @@
+label,label_index,sample_index,path,reason
+G,6,781,continuation dataset/G/781.jpg,insufficient_hands_detected:0
+G,6,798,continuation dataset/G/798.jpg,insufficient_hands_detected:0

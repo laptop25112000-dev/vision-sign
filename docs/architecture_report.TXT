@@ -1,0 +1,317 @@
+# Visual Voice: ISL Translator Architecture Report
+
+## 1. Executive Summary
+
+Visual Voice is a local, webcam-based Indian Sign Language alphabet recognition system. It recognizes static A-Z hand signs and converts the prediction into a displayed English letter, with optional text-to-speech.
+
+The system uses a hybrid computer-vision and machine-learning architecture:
+
+1. MediaPipe detects hand landmarks from an image.
+2. The landmarks are normalized into a fixed 128-value feature vector.
+3. A scikit-learn SVM classifies the feature vector as one of 26 letters.
+4. Confidence, class separation, shape distance, and time-based stability checks reject weak predictions.
+5. The browser displays the accepted letter and can request spoken output.
+
+This is currently an alphabet recognizer rather than a complete natural-language translator. It does not yet translate continuous ISL gestures, words, sentence grammar, facial expressions, or body movement.
+
+## 2. High-Level Architecture
+
+```text
+                         OFFLINE TRAINING
+
+ Image datasets + webcam samples
+                 |
+                 v
+       Dataset audit and manifests
+                 |
+                 v
+       MediaPipe hand detection
+                 |
+                 v
+  Normalized 128-value landmark vectors
+                 |
+                 v
+     Class balancing + train/test split
+                 |
+                 v
+ StandardScaler + RBF SVM classification
+                 |
+                 v
+ Saved model, class metadata, centroids,
+ distance thresholds, and evaluation metrics
+
+
+                         LIVE INFERENCE
+
+ Browser webcam
+       |
+       v
+ JPEG frame captured every 280 ms
+       |
+       v
+ POST /predict to local Python server
+       |
+       v
+ MediaPipe detects up to four candidate hands
+       |
+       v
+ Two largest valid hands are selected
+       |
+       v
+ Same 128-value feature extraction
+       |
+       v
+ SVM probabilities + rejection checks
+       |
+       v
+ Browser smoothing and stability checks
+       |
+       +--------> Display letter
+       |
+       +--------> POST /speak for optional voice
+```
+
+## 3. Main Components
+
+### Web Client
+
+Files: `web/index.html`, `web/app.js`, and `web/styles.css`
+
+The browser owns the user interface and camera capture. It:
+
+- Requests webcam permission through `getUserMedia`.
+- Draws the video frame to a hidden canvas at 480 pixels wide.
+- Applies the selected digital zoom.
+- Encodes the frame as JPEG with quality `0.72`.
+- Sends a frame to `/predict` approximately every 280 milliseconds.
+- Displays the predicted label, confidence, detected-hand count, and status.
+- Applies a 16-result history window, requiring 12 votes and a 900 ms hold before marking a letter stable.
+- Requests speech from `/speak` when voice mode is enabled.
+
+The client prevents overlapping requests with a `busy` flag, so the browser does not send another prediction while the previous one is still running.
+
+### Python Web and Inference Server
+
+File: `src/web_app.py`
+
+The backend uses Python's `ThreadingHTTPServer`, without Flask or Django. It:
+
+- Serves the static website.
+- Accepts base64 JPEG frames at `POST /predict`.
+- Decodes frames using OpenCV.
+- Runs MediaPipe Hands.
+- Converts detected landmarks into model features.
+- Runs the saved SVM model.
+- Applies prediction rejection rules.
+- Returns a small JSON response.
+- Runs local text-to-speech through `pyttsx3` at `POST /speak`.
+- Reloads the model automatically if the model file changes.
+
+Example prediction response:
+
+```json
+{
+  "ok": true,
+  "accepted": true,
+  "not_detectable": false,
+  "label": "A",
+  "confidence": 0.94,
+  "gap": 0.31,
+  "hands": 2,
+  "distance": 2.1,
+  "threshold": 4.8
+}
+```
+
+### Hand Landmark Feature Extractor
+
+Files: `src/extract_landmarks.py`, `src/web_app.py`, and `src/webcam_predict.py`
+
+MediaPipe produces 21 landmarks per hand. Each landmark has `x`, `y`, and `z` coordinates.
+
+For each hand:
+
+1. The wrist landmark is subtracted from all landmarks, making the representation position-independent.
+2. Coordinates are divided by the largest landmark distance from the wrist, reducing sensitivity to hand size and camera distance.
+3. The 21 x 3 values are flattened into 63 numbers.
+4. A hand-presence flag is added.
+
+The system supports up to two hands:
+
+```text
+Hand 1: 1 presence flag + 63 coordinates = 64 values
+Hand 2: 1 presence flag + 63 coordinates = 64 values
+Total                                      = 128 values
+```
+
+Hands are ordered from left to right by their average x-coordinate. If only one hand is visible, the second 64-value section is filled with zeros.
+
+### Machine-Learning Model
+
+File: `src/train_landmark_classifier.py`
+
+The classifier is a scikit-learn pipeline:
+
+```text
+128 landmark features
+        |
+        v
+StandardScaler
+        |
+        v
+RBF-kernel SVC
+        |
+        v
+26 class probabilities
+```
+
+Important training settings:
+
+- Algorithm: Support Vector Machine
+- Kernel: RBF
+- `C`: 10
+- Probability output: enabled
+- Test split: 20%
+- Split: stratified by class
+- Dataset balancing: downsample every class to the smallest class count
+- Current A-Z balanced count: 770 samples per class
+- Current saved evaluation: 16,016 training and 4,004 test samples
+- Saved offline accuracy: approximately 99.8%
+
+The saved `.joblib` model bundle contains the classifier, class names, feature size, hand requirement, class centroids, and class-specific distance thresholds.
+
+## 4. Prediction Acceptance Logic
+
+The model does not display every raw SVM prediction as valid. A prediction is accepted only when all of these checks pass:
+
+1. At least one sufficiently large hand is detected.
+2. The best-class probability is at least `0.70`.
+3. The gap between the best and second-best probabilities is at least `0.10`.
+4. The feature vector is close enough to the predicted class centroid.
+5. The browser sees the same result repeatedly for long enough to consider it stable.
+
+If confidence is below `0.60`, the UI displays `Not detectable`. Results between the rejection and acceptance thresholds are treated as uncertain rather than being forced into a letter.
+
+This layered rejection architecture is important because a closed-set classifier will otherwise try to label any hand pose as one of A-Z.
+
+## 5. Data and Training Pipeline
+
+### Dataset Audit
+
+File: `tools/audit_dataset.py`
+
+The audit tool expects 26 classes and 1,200 canonical images per class. It:
+
+- Checks class folders and numeric sample indexes.
+- Selects one canonical image for duplicate indexes.
+- Places extra, duplicate, or suspicious files in a quarantine manifest.
+- Produces a repeatable training manifest.
+- Does not modify the original image files.
+
+### Landmark Extraction
+
+File: `src/extract_landmarks.py`
+
+The extractor:
+
+- Reads the approved manifest or selected dataset folders.
+- Upscales small images to a 512-pixel largest side for detection.
+- Runs MediaPipe in static-image mode.
+- Saves accepted features, labels, paths, and class names to compressed `.npz` files.
+- Records unreadable images and hand-detection failures in CSV files.
+
+### Webcam Data Collection
+
+File: `src/collect_webcam_landmarks.py`
+
+Additional webcam landmark samples reduce the domain gap between clean dataset images and real camera conditions such as different lighting, backgrounds, angles, and hand sizes.
+
+### Training and Evaluation
+
+The trainer combines one or more landmark files, balances the requested classes, performs a stratified train/test split, trains the SVM, and saves:
+
+- The deployable `.joblib` model.
+- Accuracy, precision, recall, F1, and confusion matrix metrics.
+- Class centroids and distance thresholds used for out-of-distribution rejection.
+
+## 6. Deployment Model
+
+The application is designed as a local laptop application:
+
+```bash
+python src/web_app.py --model models/isl_az_live_svm.joblib
+```
+
+The user then opens `http://127.0.0.1:7860`.
+
+Advantages:
+
+- Camera frames stay on the local machine.
+- No cloud API or internet connection is required.
+- Deployment is simple and inexpensive.
+- The SVM and landmark pipeline can run on a normal CPU.
+
+Trade-offs:
+
+- The Python process must remain running.
+- The current server is intended for local demonstrations, not public production traffic.
+- Each frame is JPEG-encoded and transferred to Python, adding avoidable latency.
+- MediaPipe processing is centralized in one shared predictor instance.
+
+## 7. Strengths
+
+- Lightweight compared with raw-image CNN architectures.
+- Position and scale normalization improve robustness.
+- Supports one-hand and two-hand signs with a fixed feature size.
+- Uses confidence, probability-gap, shape-distance, and temporal filters.
+- Includes data auditing, quarantine records, failure manifests, and evaluation metrics.
+- Adds real webcam samples to reduce dataset-to-camera mismatch.
+- Runs locally and is privacy-friendly.
+- Model files can be replaced without restarting the web server.
+
+## 8. Limitations and Risks
+
+### Recognition Scope
+
+The present system recognizes isolated alphabet poses. Calling it a full ISL translator would overstate its current capability. Real ISL translation also requires temporal motion, word-level signs, facial expression, body pose, spatial relationships, and language grammar.
+
+### Static Feature Representation
+
+Every frame is classified independently. Dynamic letters or gestures whose meaning depends on motion are not modeled as sequences.
+
+### Offline Accuracy Versus Real-World Accuracy
+
+The reported 99.8% is held-out accuracy on extracted landmark samples. It should not be presented as guaranteed live-camera accuracy because samples from the same source, signer, background, or capture session can be similar. A stronger evaluation would use signer-independent and session-independent test sets.
+
+### Hand Identity and Mirroring
+
+Hands are ordered by screen x-position rather than MediaPipe handedness. The browser camera view and dataset orientation must remain consistent. Mirroring or hands crossing may change feature ordering.
+
+### Repeated Preprocessing Code
+
+Landmark normalization and feature construction are duplicated in extraction, web inference, and desktop inference. Moving them into one shared module would prevent training-serving skew.
+
+### Server Concurrency
+
+`ThreadingHTTPServer` can process multiple requests, but the predictor shares one MediaPipe Hands instance. That is acceptable for one local user but should be redesigned before multi-user deployment.
+
+## 9. Recommended Next Architecture
+
+The most valuable improvements are:
+
+1. Move all landmark preprocessing into one shared Python module used by training and inference.
+2. Add signer-independent validation and report live-camera accuracy separately.
+3. Add a sequence buffer and temporal model such as an LSTM, GRU, temporal CNN, or Transformer for dynamic gestures.
+4. Add face and upper-body landmarks for full sign-language information.
+5. Introduce explicit controls for letter confirmation, deletion, spaces, and sentence construction.
+6. Replace base64 JSON frames with binary upload, WebSocket streaming, or browser-side MediaPipe to reduce latency.
+7. Use a production API framework and per-session predictor state if the system becomes multi-user.
+
+## 10. Short Explanation for a Technical Audience
+
+"Visual Voice is a two-stage ISL alphabet recognition system. Offline, we audit the A-Z image dataset, use MediaPipe to convert each detected hand into normalized 3D landmark coordinates, store a fixed 128-value representation for up to two hands, balance the classes, and train an RBF SVM. The deployed model also stores class centroids and rejection thresholds.
+
+At runtime, the browser captures webcam frames and sends compressed JPEGs to a local Python server. The backend runs the same MediaPipe preprocessing, selects the two largest hands, builds the 128-value feature vector, and obtains class probabilities from the SVM. A result is accepted only if its confidence, separation from the second choice, and distance from the learned class shape all pass their thresholds. The browser then applies temporal voting before displaying or speaking a stable letter.
+
+The architecture is lightweight, local, and CPU-friendly, but its present scope is isolated A-Z recognition. Full ISL translation would require temporal gesture modeling, non-manual signals, word segmentation, and language-level translation."
+
