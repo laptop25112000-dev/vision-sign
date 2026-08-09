@@ -92,7 +92,7 @@ def main():
         json.dump(model.classes_.tolist(), f)
     print(f"  -> {classes_path}")
 
-    print("\nDone! Your web/model/ directory is ready for Vercel deployment.")
+    print("\nDone! Your web/model/ directory is ready.")
 
 
 if __name__ == "__main__":

@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Visual Voice</title>
+    <title>Vision Sign</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main>
       <section id="intro" class="intro-view">
-        <div class="brand-logo" aria-label="Visual Voice logo">
-          <span>VV</span>
-          <strong>Visual Voice</strong>
+        <div class="brand-logo" aria-label="Vision Sign logo">
+          <span>VS</span>
+          <strong>Vision Sign</strong>
         </div>
         <div class="intro-copy">
           <p class="eyebrow">Data Science Project</p>
-          <h1>Visual Voice</h1>
-          <p class="credit">Made by Divyansh</p>
+          <h1>Vision Sign</h1>
+          <p class="credit">Made by Team Rocket</p>
           <p class="summary">
             A webcam-based Indian Sign Language translator that recognizes A-Z
             alphabet signs using MediaPipe hand landmarks and a machine learning
@@ -34,7 +34,7 @@
             <strong>ISL</strong>
           </div>
         </div>
-        <p class="guidance-credit">Made under Navin Sir's guidance</p>
+        <p class="guidance-credit">Made under guidance of Richa Ma'am</p>
       </section>
 
       <section id="translator" class="translator-view hidden">
@@ -45,18 +45,38 @@
             <div id="prediction" class="prediction">Waiting</div>
             <div id="stable" class="stable"></div>
           </div>
+          <div id="sentence-panel" class="sentence-panel hidden">
+            <div class="sentence-display">
+              <span class="sentence-label">Sentence Buffer</span>
+              <div id="sentence-text" class="sentence-text">_</div>
+            </div>
+            <div class="sentence-controls">
+              <button id="btnSpace" class="sentence-btn" type="button">␣ Space</button>
+              <button id="btnBackspace" class="sentence-btn" type="button">⌫ Backspace</button>
+              <button id="btnClear" class="sentence-btn" type="button">✕ Clear</button>
+              <button id="btnSpeak" class="sentence-btn primary" type="button">🔊 Speak</button>
+            </div>
+          </div>
         </section>
 
         <aside class="side-pane">
           <header>
-            <div class="side-logo" aria-label="Visual Voice logo">
-              <span>VV</span>
-              <strong>Visual Voice</strong>
+            <div class="side-logo" aria-label="Vision Sign logo">
+              <span>VS</span>
+              <strong>Vision Sign</strong>
             </div>
             <p class="eyebrow">Live Detection</p>
-            <h2>Visual Voice</h2>
+            <h2>Vision Sign</h2>
             <p>A-Z recognition is active.</p>
           </header>
+
+          <div class="mode-card">
+            <span>Translation Mode</span>
+            <div class="mode-toggle-group">
+              <button id="modeLetter" class="mode-toggle-btn active" type="button">Letter Recognition</button>
+              <button id="modeWord" class="mode-toggle-btn" type="button">Word Maker</button>
+            </div>
+          </div>
 
           <div class="metrics">
             <div>
@@ -99,14 +119,14 @@
 
       <section id="analysis" class="analysis-view hidden">
         <header class="analysis-hero">
-          <div class="side-logo" aria-label="Visual Voice logo">
-            <span>VV</span>
-            <strong>Visual Voice</strong>
+          <div class="side-logo" aria-label="Vision Sign logo">
+            <span>VS</span>
+            <strong>Vision Sign</strong>
           </div>
           <p class="eyebrow">Data Science Project</p>
           <h2>ISL Recognition Study</h2>
           <p>
-            Visual Voice was built as a data collection and machine learning
+            Vision Sign was built as a data collection and machine learning
             project. Around 50,000 sign samples were processed through MediaPipe,
             converted into landmark features, cleaned, balanced, trained, and
             evaluated before being used for live webcam translation.

@@ -131,11 +131,6 @@ def main() -> int:
     parser.add_argument("--min-hand-area", type=float, default=0.015)
     parser.add_argument("--target-per-class", type=int, default=50)
     parser.add_argument("--capture-interval", type=float, default=0.25)
-    parser.add_argument(
-        "--mirror",
-        action="store_true",
-        help="Mirror the preview frame. Off by default so that coordinates match dataset orientation.",
-    )
     args = parser.parse_args()
 
     cv2, mp, np, ISLHandDetector = require_dependencies()
@@ -234,10 +229,6 @@ def main() -> int:
 
             # Draw annotations in standard unmirrored coordinate space
             draw_hands(frame, selected_hands, mp, cv2)
-
-            # Mirror the visualization frame if requested, flipping landmarks too
-            if args.mirror:
-                frame = cv2.flip(frame, 1)
 
             if auto_capture and detected_hands < args.required_hands:
                 auto_status = f"WAITING {detected_hands}/{args.required_hands}"

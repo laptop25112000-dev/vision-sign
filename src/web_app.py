@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local web UI for Visual Voice.
+"""Local web UI for Vision Sign.
 
 This uses only Python's standard HTTP server for routing. The browser captures
 webcam frames and posts them to /predict; Python runs MediaPipe + the saved SVM.

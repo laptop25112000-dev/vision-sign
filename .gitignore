@@ -1,12 +1,21 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# ── Training artifacts (not needed for deployment) ─────────────────────
+# Raw landmark data
 data/
+
+# Python .joblib models (large, training-only — ONNX version is in web/model/)
 models/
 
-# Large dataset folders (too big for GitHub)
+# Large dataset image folders
 DTASET A-Z/
 continuation dataset/
 extracted_dataset_A-Z/
 problem_2_frames/
 voice_problem_frames/
+
+# ── Allow web/model/ (ONNX + JSON files needed for the live browser app) ──
+# These are already inside web/ so they are tracked by default.
+# The above 'models/' rule only blocks the root-level models/ folder.

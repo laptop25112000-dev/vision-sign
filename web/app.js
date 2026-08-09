@@ -1,4 +1,4 @@
-/* ── Visual Voice — fully client-side ISL translator ──────────────── */
+/* ── Vision Sign — fully client-side ISL translator ──────────────── */
 
 // DOM handles
 const intro = document.getElementById("intro");
@@ -15,6 +15,16 @@ const statusText = document.getElementById("status");
 const voiceToggle = document.getElementById("voiceToggle");
 const zoom = document.getElementById("zoom");
 const zoomValue = document.getElementById("zoomValue");
+
+// Mode & Sentence Maker DOM handles
+const modeLetter = document.getElementById("modeLetter");
+const modeWord = document.getElementById("modeWord");
+const sentencePanel = document.getElementById("sentence-panel");
+const sentenceText = document.getElementById("sentence-text");
+const btnSpace = document.getElementById("btnSpace");
+const btnBackspace = document.getElementById("btnBackspace");
+const btnClear = document.getElementById("btnClear");
+const btnSpeak = document.getElementById("btnSpeak");
 
 // ── Stable-letter voting ────────────────────────────────────────────
 const history = [];
@@ -37,6 +47,19 @@ let speechCandidateSince = 0;
 let spokenCandidate = "";
 let lastSpoken = "";
 let lastSpokenAt = 0;
+
+// ── Word/Sentence Maker state ───────────────────────────────────────
+let currentMode = "letter"; // "letter" or "word"
+const spellingBuffer = [];
+let lastAppendedLetter = "";
+let unstableFramesCount = 0;
+let lastHandSeenTime = Date.now();
+const autoSpaceDelay = 2000; // 2.0s of no hand -> space
+
+// Word maker fast-streak counter (independent of the letter-display voting)
+let wordStreakLabel = "";
+let wordStreakCount = 0;
+const WORD_STREAK_NEEDED = 8; // ~2.2s at 280ms/frame
 
 // ── Inference state ─────────────────────────────────────────────────
 let busy = false;
@@ -305,6 +328,42 @@ function updateStable(label) {
     stableCandidate &&
     Date.now() - Number(stable.dataset.pendingSince || 0) >= stableHoldMs;
   stable.textContent = isStable ? `Stable: ${stableCandidate}` : "";
+  return isStable ? stableCandidate : "";
+}
+
+// ── Word/Sentence Maker functions ──────────────────────────────────
+function appendLetter(char) {
+  spellingBuffer.push(char);
+  updateSentenceText();
+}
+
+function updateSentenceText() {
+  sentenceText.textContent = spellingBuffer.join("") + "_";
+  sentenceText.scrollLeft = sentenceText.scrollWidth;
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  modeLetter.classList.toggle("active", mode === "letter");
+  modeWord.classList.toggle("active", mode === "word");
+  
+  if (mode === "word") {
+    sentencePanel.classList.remove("hidden");
+    updateSentenceText();
+  } else {
+    sentencePanel.classList.add("hidden");
+  }
+  
+  // Reset state
+  history.length = 0;
+  lastAppendedLetter = "";
+  unstableFramesCount = 0;
+  wordStreakLabel = "";
+  wordStreakCount = 0;
+  lastHandSeenTime = Date.now();
+  stable.textContent = "";
+  stable.dataset.pending = "";
+  stable.dataset.pendingSince = "";
 }
 
 // ── Voice via Web Speech API ────────────────────────────────────────
@@ -404,6 +463,10 @@ async function predictFrame() {
     const selected = selectPrimaryHands(allHands, 2, MIN_HAND_AREA);
     const detectedHands = selected.length;
 
+    if (detectedHands >= 1) {
+      lastHandSeenTime = Date.now();
+    }
+
     if (detectedHands < 1) {
       prediction.classList.toggle("not-detectable", true);
       prediction.textContent = "Not detectable";
@@ -416,6 +479,19 @@ async function predictFrame() {
       letterEl.textContent = "-";
       confidenceEl.textContent = "-";
       handsEl.textContent = "0";
+
+      // Word Maker inactivity spacing
+      if (currentMode === "word") {
+        wordStreakLabel = "";
+        wordStreakCount = 0;
+        const now = Date.now();
+        if (now - lastHandSeenTime >= autoSpaceDelay) {
+          if (spellingBuffer.length > 0 && spellingBuffer[spellingBuffer.length - 1] !== " ") {
+            appendLetter(" ");
+          }
+          lastHandSeenTime = now;
+        }
+      }
       return;
     }
 
@@ -443,11 +519,48 @@ async function predictFrame() {
       resetSpeechCandidate();
     }
 
+    // Letter display stable voting (unchanged — used in Letter mode)
+    let stableLetter = "";
     if (result.accepted && !result.not_detectable) {
-      updateStable(result.label);
+      stableLetter = updateStable(result.label);
     } else {
       stable.textContent = "";
       history.length = 0;
+      stable.dataset.pending = "";
+      stable.dataset.pendingSince = "";
+    }
+
+    // ── Word Maker fast-streak accumulation ──────────────────────────
+    if (currentMode === "word") {
+      if (result.accepted && !result.not_detectable) {
+        const lbl = result.label;
+        if (lbl === wordStreakLabel) {
+          wordStreakCount++;
+        } else {
+          // New letter — reset streak; also allow re-appending the same letter
+          wordStreakLabel = lbl;
+          wordStreakCount = 1;
+          lastAppendedLetter = ""; // reset so same letter can follow
+        }
+
+        // Show progress bar hint in stable element
+        const pct = Math.min(wordStreakCount, WORD_STREAK_NEEDED);
+        stable.textContent = `Holding: ${lbl} [${"█".repeat(pct)}${"░".repeat(WORD_STREAK_NEEDED - pct)}]`;
+
+        if (wordStreakCount >= WORD_STREAK_NEEDED && lbl !== lastAppendedLetter) {
+          appendLetter(lbl);
+          lastAppendedLetter = lbl;
+          // Let streak continue so user sees it was accepted, reset after gap
+        }
+      } else {
+        // Not accepted — decay streak slowly
+        wordStreakCount = Math.max(0, wordStreakCount - 2);
+        if (wordStreakCount === 0) {
+          wordStreakLabel = "";
+          lastAppendedLetter = "";
+          stable.textContent = "";
+        }
+      }
     }
   } finally {
     busy = false;
@@ -493,4 +606,39 @@ zoom.addEventListener("input", () => {
   zoomLevel = Number(zoom.value);
   zoomValue.textContent = `${zoomLevel.toFixed(1)}x`;
   video.style.transform = `scale(${zoomLevel})`;
+});
+
+// Mode selector listeners
+modeLetter.addEventListener("click", () => setMode("letter"));
+modeWord.addEventListener("click", () => setMode("word"));
+
+// Sentence Maker controls listeners
+btnSpace.addEventListener("click", () => {
+  if (spellingBuffer.length > 0 && spellingBuffer[spellingBuffer.length - 1] !== " ") {
+    appendLetter(" ");
+  }
+  lastAppendedLetter = "";
+});
+
+btnBackspace.addEventListener("click", () => {
+  if (spellingBuffer.length > 0) {
+    spellingBuffer.pop();
+    updateSentenceText();
+  }
+  lastAppendedLetter = "";
+});
+
+btnClear.addEventListener("click", () => {
+  spellingBuffer.length = 0;
+  updateSentenceText();
+  lastAppendedLetter = "";
+});
+
+btnSpeak.addEventListener("click", () => {
+  const sentence = spellingBuffer.join("").trim();
+  if (sentence && "speechSynthesis" in window) {
+    const utter = new SpeechSynthesisUtterance(sentence);
+    utter.rate = 0.9;
+    window.speechSynthesis.speak(utter);
+  }
 });

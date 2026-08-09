@@ -171,11 +171,6 @@ def main() -> int:
     parser.add_argument("--min-detection-confidence", type=float, default=0.5)
     parser.add_argument("--min-hand-area", type=float, default=0.015)
     parser.add_argument(
-        "--mirror",
-        action="store_true",
-        help="Mirror the webcam frame before prediction. Off by default to match dataset orientation.",
-    )
-    parser.add_argument(
         "--auto-space-delay",
         type=float,
         default=2.0,
@@ -245,7 +240,6 @@ def main() -> int:
 
             # NOTE: We do NOT flip the image before MediaPipe process. Doing so negates
             # the coordinates relative to the wrist origin and degrades model accuracy.
-            # We process the unmirrored frame and flip the canvas afterwards for user preview.
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = hands.process(rgb)
             selected_hands = select_primary_hands(
@@ -346,11 +340,6 @@ def main() -> int:
 
             # Draw skeletons on the original frame coordinates
             draw_hands(frame, selected_hands, mp, cv2)
-
-            # Flip the frame for preview display if mirror argument is enabled.
-            # Flips hand annotations along with frame, maintaining alignment.
-            if args.mirror:
-                frame = cv2.flip(frame, 1)
 
             # Draw prediction text info
             if label_text:
