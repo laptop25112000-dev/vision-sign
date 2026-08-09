@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vision Sign</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section id="intro" class="intro-view">
+        <div class="brand-logo" aria-label="Vision Sign logo">
+          <span>VS</span>
+          <strong>Vision Sign</strong>
+        </div>
+        <div class="intro-copy">
+          <p class="eyebrow">Data Science Project</p>
+          <h1>Vision Sign</h1>
+          <p class="credit">Made by Team Rocket</p>
+          <p class="summary">
+            A webcam-based Indian Sign Language translator that recognizes A-Z
+            alphabet signs using MediaPipe hand landmarks and a machine learning
+            classifier. The project is currently focused on alphabet recognition,
+            and we are continuing to improve its real-world accuracy.
+          </p>
+          <button id="start" class="primary-action" type="button">
+            Start Translation
+          </button>
+        </div>
+        <div class="intro-visual" aria-hidden="true">
+          <div class="letter-orbit">
+            <span>A</span>
+            <span>Z</span>
+            <strong>ISL</strong>
+          </div>
+        </div>
+        <p class="guidance-credit">Made under guidance of Richa Ma'am</p>
+      </section>
+
+      <section id="translator" class="translator-view hidden">
+        <section class="camera-pane">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="capture" hidden></canvas>
+          <div class="letter-stage">
+            <div id="prediction" class="prediction">Waiting</div>
+            <div id="stable" class="stable"></div>
+          </div>
+          <div id="sentence-panel" class="sentence-panel hidden">
+            <div class="sentence-display">
+              <span class="sentence-label">Sentence Buffer</span>
+              <div id="sentence-text" class="sentence-text">_</div>
+            </div>
+            <div class="sentence-controls">
+              <button id="btnSpace" class="sentence-btn" type="button">␣ Space</button>
+              <button id="btnBackspace" class="sentence-btn" type="button">⌫ Backspace</button>
+              <button id="btnClear" class="sentence-btn" type="button">✕ Clear</button>
+              <button id="btnSpeak" class="sentence-btn primary" type="button">🔊 Speak</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="side-pane">
+          <header>
+            <div class="side-logo" aria-label="Vision Sign logo">
+              <span>VS</span>
+              <strong>Vision Sign</strong>
+            </div>
+            <p class="eyebrow">Live Detection</p>
+            <h2>Vision Sign</h2>
+            <p>A-Z recognition is active.</p>
+          </header>
+
+          <div class="mode-card">
+            <span>Translation Mode</span>
+            <div class="mode-toggle-group">
+              <button id="modeLetter" class="mode-toggle-btn active" type="button">Letter Recognition</button>
+              <button id="modeWord" class="mode-toggle-btn" type="button">Word Maker</button>
+            </div>
+          </div>
+
+          <div class="metrics">
+            <div>
+              <span>Letter</span>
+              <strong id="letter">-</strong>
+            </div>
+            <div>
+              <span>Confidence</span>
+              <strong id="confidence">-</strong>
+            </div>
+            <div>
+              <span>Hands</span>
+              <strong id="hands">-</strong>
+            </div>
+          </div>
+
+          <div class="status-card">
+            <span>Status</span>
+            <strong id="status">Camera starting</strong>
+          </div>
+
+          <div class="zoom-card">
+            <span>Camera Zoom</span>
+            <strong id="zoomValue">1.0x</strong>
+            <input
+              id="zoom"
+              type="range"
+              min="0.5"
+              max="1"
+              step="0.1"
+              value="1"
+            />
+          </div>
+
+          <button id="voiceToggle" class="voice-toggle" type="button">
+            Voice: Off
+          </button>
+        </aside>
+      </section>
+
+      <section id="analysis" class="analysis-view hidden">
+        <header class="analysis-hero">
+          <div class="side-logo" aria-label="Vision Sign logo">
+            <span>VS</span>
+            <strong>Vision Sign</strong>
+          </div>
+          <p class="eyebrow">Data Science Project</p>
+          <h2>ISL Recognition Study</h2>
+          <p>
+            Vision Sign was built as a data collection and machine learning
+            project. Around 50,000 sign samples were processed through MediaPipe,
+            converted into landmark features, cleaned, balanced, trained, and
+            evaluated before being used for live webcam translation.
+          </p>
+        </header>
+
+        <section class="research-panel">
+          <div>
+            <span>Problem Statement</span>
+            <p>
+              Convert Indian Sign Language alphabet gestures into readable and
+              spoken English letters using computer vision and supervised
+              classification.
+            </p>
+          </div>
+          <div>
+            <span>Research Question</span>
+            <p>
+              Can hand landmark features classify A-Z signs accurately enough
+              for real-time webcam translation on a normal laptop?
+            </p>
+          </div>
+          <div>
+            <span>Target Variable</span>
+            <p>
+              Alphabet class label from A to Z. Each sample is represented by
+              normalized hand landmark coordinates instead of raw pixels.
+            </p>
+          </div>
+        </section>
+
+        <div class="analysis-grid">
+          <article class="analysis-card">
+            <span>Classes</span>
+            <strong>26</strong>
+            <p>A-Z Indian Sign Language alphabet signs.</p>
+          </article>
+          <article class="analysis-card featured-card">
+            <span>Raw Samples Processed</span>
+            <strong>~50K</strong>
+            <p>Dataset images plus webcam-collected samples.</p>
+          </article>
+          <article class="analysis-card">
+            <span>Feature Size</span>
+            <strong>128</strong>
+            <p>Two-hand landmark vector with hand-presence flags.</p>
+          </article>
+          <article class="analysis-card">
+            <span>Training Samples</span>
+            <strong>16016</strong>
+            <p>Balanced samples used for model learning.</p>
+          </article>
+          <article class="analysis-card">
+            <span>Test Samples</span>
+            <strong>4004</strong>
+            <p>Held-out samples used for evaluation.</p>
+          </article>
+          <article class="analysis-card">
+            <span>Accuracy</span>
+            <strong>99.8%</strong>
+            <p>Offline test accuracy on landmark data.</p>
+          </article>
+          <article class="analysis-card">
+            <span>Model</span>
+            <strong>SVM</strong>
+            <p>RBF-kernel classifier trained on normalized landmarks.</p>
+          </article>
+        </div>
+
+        <section class="analysis-band">
+          <h3>Data Collection Overview</h3>
+          <div class="chart-grid">
+            <div class="bar-chart" aria-label="Sample source chart">
+              <div class="bar-row">
+                <span>Dataset Images</span>
+                <div><i style="width: 88%"></i></div>
+                <strong>High</strong>
+              </div>
+              <div class="bar-row">
+                <span>Webcam Samples</span>
+                <div><i style="width: 54%"></i></div>
+                <strong>Medium</strong>
+              </div>
+              <div class="bar-row">
+                <span>Cleaned Landmarks</span>
+                <div><i style="width: 76%"></i></div>
+                <strong>Strong</strong>
+              </div>
+              <div class="bar-row">
+                <span>Rejected Frames</span>
+                <div><i class="warning-bar" style="width: 22%"></i></div>
+                <strong>Low</strong>
+              </div>
+            </div>
+            <div class="donut-card">
+              <div class="donut"></div>
+              <div>
+                <span>Balanced Training</span>
+                <strong>770</strong>
+                <p>Samples per class after balancing for fair learning.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="analysis-band">
+          <h3>Exploratory Data Analysis</h3>
+          <div class="eda-grid">
+            <div>
+              <strong>Class Distribution</strong>
+              <p>
+                The dataset was grouped alphabet-wise and then balanced so that
+                overrepresented classes did not dominate the classifier.
+              </p>
+            </div>
+            <div>
+              <strong>Hand Detection Quality</strong>
+              <p>
+                MediaPipe failures were tracked separately because blurred,
+                tiny, or partially visible hands reduce landmark quality.
+              </p>
+            </div>
+            <div>
+              <strong>Domain Gap</strong>
+              <p>
+                Kaggle-style images and live webcam frames differ in lighting,
+                distance, camera angle, and background, so webcam samples were
+                added for real-world testing.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="analysis-band dashboard-panel">
+          <div class="section-heading">
+            <div>
+              <span>Distribution Study</span>
+              <h3>Alphabet Sample Distribution</h3>
+            </div>
+            <p>Balanced training keeps every alphabet close to the same learning weight.</p>
+          </div>
+          <div class="distribution-chart" aria-label="Alphabet distribution chart">
+            <span style="height: 82%">A</span><span style="height: 79%">B</span>
+            <span style="height: 82%">C</span><span style="height: 82%">D</span>
+            <span style="height: 82%">E</span><span style="height: 82%">F</span>
+            <span style="height: 81%">G</span><span style="height: 82%">H</span>
+            <span style="height: 84%">I</span><span style="height: 84%">J</span>
+            <span style="height: 84%">K</span><span style="height: 84%">L</span>
+            <span style="height: 82%">M</span><span style="height: 82%">N</span>
+            <span style="height: 73%">O</span><span style="height: 74%">P</span>
+            <span style="height: 50%">Q</span><span style="height: 84%">R</span>
+            <span style="height: 75%">S</span><span style="height: 84%">T</span>
+            <span style="height: 78%">U</span><span style="height: 79%">V</span>
+            <span style="height: 78%">W</span><span style="height: 82%">X</span>
+            <span style="height: 79%">Y</span><span style="height: 79%">Z</span>
+          </div>
+          <div class="chart-legend">
+            <span><i></i> Higher sample count</span>
+            <span><i class="low"></i> Lower sample count after extraction</span>
+          </div>
+        </section>
+
+        <section class="insight-row">
+          <article class="analysis-band dashboard-panel">
+            <div class="section-heading">
+              <div>
+                <span>Correlation</span>
+                <h3>Landmark Feature Correlation</h3>
+              </div>
+            </div>
+            <div class="correlation-matrix" aria-label="Feature correlation heatmap">
+              <b>Wrist</b><b>Thumb</b><b>Index</b><b>Middle</b><b>Ring</b><b>Pinky</b>
+              <i class="c5"></i><i class="c3"></i><i class="c2"></i><i class="c1"></i><i class="c1"></i><i class="c2"></i>
+              <i class="c3"></i><i class="c5"></i><i class="c4"></i><i class="c2"></i><i class="c1"></i><i class="c1"></i>
+              <i class="c2"></i><i class="c4"></i><i class="c5"></i><i class="c4"></i><i class="c2"></i><i class="c1"></i>
+              <i class="c1"></i><i class="c2"></i><i class="c4"></i><i class="c5"></i><i class="c4"></i><i class="c2"></i>
+              <i class="c1"></i><i class="c1"></i><i class="c2"></i><i class="c4"></i><i class="c5"></i><i class="c4"></i>
+              <i class="c2"></i><i class="c1"></i><i class="c1"></i><i class="c2"></i><i class="c4"></i><i class="c5"></i>
+            </div>
+            <p class="matrix-note">
+              Nearby fingers show stronger correlation because their landmarks
+              move together during similar hand shapes.
+            </p>
+          </article>
+
+          <article class="analysis-band dashboard-panel">
+            <div class="section-heading">
+              <div>
+                <span>Comparison</span>
+                <h3>Feature Importance Factors</h3>
+              </div>
+            </div>
+            <div class="factor-list">
+              <div><span>Finger shape</span><strong>Very high</strong></div>
+              <div><span>Hand orientation</span><strong>High</strong></div>
+              <div><span>Two-hand presence</span><strong>Medium</strong></div>
+              <div><span>Lighting and blur</span><strong>Medium</strong></div>
+              <div><span>Background</span><strong>Low</strong></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="analysis-band">
+          <h3>Data Pipeline</h3>
+          <div class="pipeline">
+            <span>Webcam / Images</span>
+            <span>MediaPipe Hands</span>
+            <span>128 Landmark Features</span>
+            <span>SVM Classifier</span>
+            <span>Letter + Voice</span>
+          </div>
+        </section>
+
+        <section class="analysis-band">
+          <h3>Model Evaluation</h3>
+          <div class="evaluation-grid">
+            <div class="metric-tile">
+              <span>Accuracy</span>
+              <strong>99.8%</strong>
+            </div>
+            <div class="metric-tile">
+              <span>Macro F1</span>
+              <strong>99.8%</strong>
+            </div>
+            <div class="metric-tile">
+              <span>Classes</span>
+              <strong>26</strong>
+            </div>
+            <div class="metric-tile">
+              <span>Balanced Count</span>
+              <strong>770</strong>
+            </div>
+          </div>
+          <div class="confusion-preview" aria-label="Confusion matrix preview">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <p class="matrix-note">
+            The confusion matrix is mostly diagonal, which means the model
+            usually predicts the correct alphabet class. Remaining errors mostly
+            happen between visually similar signs or unclear hand positions.
+          </p>
+        </section>
+
+        <section class="analysis-band dashboard-panel">
+          <div class="section-heading">
+            <div>
+              <span>Heatmap</span>
+              <h3>Error Concentration Map</h3>
+            </div>
+            <p>Most classes are strong; darker cells mark letters that need cleaner webcam examples.</p>
+          </div>
+          <div class="letter-heatmap" aria-label="Alphabet error heatmap">
+            <span class="h1">A</span><span class="h1">B</span><span class="h3">C</span><span class="h3">D</span>
+            <span class="h1">E</span><span class="h2">F</span><span class="h3">G</span><span class="h2">H</span>
+            <span class="h1">I</span><span class="h2">J</span><span class="h2">K</span><span class="h1">L</span>
+            <span class="h3">M</span><span class="h1">N</span><span class="h1">O</span><span class="h1">P</span>
+            <span class="h2">Q</span><span class="h1">R</span><span class="h1">S</span><span class="h2">T</span>
+            <span class="h1">U</span><span class="h1">V</span><span class="h1">W</span><span class="h1">X</span>
+            <span class="h1">Y</span><span class="h1">Z</span>
+          </div>
+        </section>
+
+        <section class="analysis-band">
+          <h3>Model Comparison</h3>
+          <table class="model-table">
+            <thead>
+              <tr>
+                <th>Approach</th>
+                <th>Input</th>
+                <th>Training Need</th>
+                <th>Why / Why Not</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>SVM</td>
+                <td>MediaPipe landmarks</td>
+                <td>CPU friendly</td>
+                <td>Best for small-to-medium structured feature data.</td>
+              </tr>
+              <tr>
+                <td>Neural Network</td>
+                <td>128 landmark features</td>
+                <td>More data, more tuning</td>
+                <td>Possible future version with dense layers and softmax.</td>
+              </tr>
+              <tr>
+                <td>CNN</td>
+                <td>Raw images</td>
+                <td>GPU preferred</td>
+                <td>Powerful but heavier and harder to train in 4 days.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="analysis-columns">
+          <article>
+            <h3>Data Analysis Used</h3>
+            <p>
+              The project works like a data collector first. Images and webcam
+              frames are collected, MediaPipe extracts hand landmarks, weak
+              frames are rejected, class counts are compared, samples are
+              balanced, and the model is evaluated using train-test split,
+              precision, recall, F1-score, accuracy, confusion matrix,
+              confidence score, and distance-based rejection for unclear signs.
+            </p>
+          </article>
+          <article>
+            <h3>Neural Network Comparison</h3>
+            <p>
+              The current working model is not a neural network. It uses an SVM
+              because the dataset is moderate in size and MediaPipe already
+              converts images into useful hand features. A neural network version
+              could use 128 input neurons, hidden layers such as 64 and 32
+              neurons, and a 26-class softmax output. Google Translate-style
+              systems use much larger neural networks for language translation,
+              while this project focuses on gesture-to-letter classification.
+            </p>
+          </article>
+        </section>      </section>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
