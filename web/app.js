@@ -26,6 +26,20 @@ const btnBackspace = document.getElementById("btnBackspace");
 const btnClear = document.getElementById("btnClear");
 const btnSpeak = document.getElementById("btnSpeak");
 
+// Practice & Phrases DOM handles
+const practiceTarget = document.getElementById("practiceTarget");
+const practiceStatus = document.getElementById("practiceStatus");
+const practiceInput = document.getElementById("practiceInput");
+const btnSetPractice = document.getElementById("btnSetPractice");
+const presetButtons = document.querySelectorAll(".preset-btn");
+const phraseButtons = document.querySelectorAll(".phrase-btn");
+
+// Collection & Retraining DOM handles
+const collectLetterSelect = document.getElementById("collectLetterSelect");
+const btnCollectSample = document.getElementById("btnCollectSample");
+const collectedCount = document.getElementById("collectedCount");
+const btnTrainModel = document.getElementById("btnTrainModel");
+
 // ── Stable-letter voting ────────────────────────────────────────────
 const history = [];
 const windowSize = 16;
@@ -60,6 +74,13 @@ const autoSpaceDelay = 2000; // 2.0s of no hand -> space
 let wordStreakLabel = "";
 let wordStreakCount = 0;
 const WORD_STREAK_NEEDED = 8; // ~2.2s at 280ms/frame
+
+// ── Practice Challenge state ─────────────────────────────────────────
+let practiceTargetText = "CAT";
+let practiceSuccess = false;
+
+// ── Landmark collection state ────────────────────────────────────────
+let latestFeature = null;   // Float32Array from the most recent frame
 
 // ── Inference state ─────────────────────────────────────────────────
 let busy = false;
@@ -333,8 +354,14 @@ function updateStable(label) {
 
 // ── Word/Sentence Maker functions ──────────────────────────────────
 function appendLetter(char) {
+  if (char === " ") {
+    handleWordCompletion();
+  }
   spellingBuffer.push(char);
   updateSentenceText();
+  
+  // Check practice targets when a letter/word is appended
+  checkPracticeTarget(char, true);
 }
 
 function updateSentenceText() {
@@ -368,18 +395,28 @@ function setMode(mode) {
 
 // ── Voice via Web Speech API ────────────────────────────────────────
 
+function speakText(text) {
+  if (!voiceEnabled || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 0.95;
+    utter.pitch = 1.0;
+    window.speechSynthesis.speak(utter);
+    statusText.textContent = `Spoke: "${text}"`;
+  } catch (e) {
+    console.error("Speech synthesis failed", e);
+  }
+}
+
 function speakLetter(text) {
   if (!voiceEnabled || !("speechSynthesis" in window)) return;
   const now = Date.now();
   if (text === lastSpoken && now - lastSpokenAt < speechCooldownMs) return;
 
-  const utter = new SpeechSynthesisUtterance(`Letter ${text}`);
-  utter.rate = 0.9;
-  utter.pitch = 1;
-  window.speechSynthesis.speak(utter);
+  speakText(`Letter ${text}`);
   lastSpoken = text;
   lastSpokenAt = now;
-  statusText.textContent = `Spoken ${text}`;
 }
 
 function updateSpeechCandidate(label) {
@@ -402,6 +439,95 @@ function resetSpeechCandidate() {
   speechCandidate = "";
   speechCandidateSince = 0;
   spokenCandidate = "";
+}
+
+// ── Web Audio API Success Chime ─────────────────────────────────────
+
+function playSuccessChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(523.25, now); // C5
+    osc.frequency.setValueAtTime(659.25, now + 0.12); // E5
+    osc.frequency.setValueAtTime(880.00, now + 0.24); // A5
+    
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 0.6);
+  } catch (e) {
+    console.error("Audio chime play failed", e);
+  }
+}
+
+// ── Practice Challenge matching ─────────────────────────────────────
+
+function triggerPracticeSuccess(matchedText) {
+  if (practiceSuccess) return;
+  practiceSuccess = true;
+  
+  playSuccessChime();
+  
+  const container = document.querySelector(".practice-prompt-container");
+  if (container) {
+    container.classList.add("matched");
+  }
+  
+  practiceStatus.textContent = "🎉 Match!";
+  speakText(`Excellent! You signed ${matchedText}`);
+}
+
+function resetPracticeState() {
+  practiceSuccess = false;
+  practiceStatus.textContent = "Pending";
+  const container = document.querySelector(".practice-prompt-container");
+  if (container) {
+    container.classList.remove("matched");
+  }
+}
+
+function checkPracticeTarget(currentLetter, isStableLetter) {
+  if (practiceSuccess) return;
+  
+  const target = practiceTargetText.trim().toUpperCase();
+  if (!target) return;
+  
+  if (target.length === 1) {
+    if (currentLetter === target) {
+      triggerPracticeSuccess(target);
+    }
+  } else {
+    if (currentMode === "word") {
+      const bufferText = spellingBuffer.join("").trim().toUpperCase();
+      if (bufferText.endsWith(target)) {
+        triggerPracticeSuccess(target);
+      }
+    }
+  }
+}
+
+function handleWordCompletion() {
+  const bufferText = spellingBuffer.join("").trim();
+  if (!bufferText) return;
+  
+  const words = bufferText.split(/\s+/);
+  const lastWord = words[words.length - 1];
+  
+  if (lastWord && lastWord.length > 1) {
+    speakText(lastWord);
+  }
 }
 
 // ── Display letter with transition hold ─────────────────────────────
@@ -497,6 +623,7 @@ async function predictFrame() {
 
     // Build feature vector and run ONNX
     const feature = handsToFeature(selected);
+    latestFeature = Array.from(feature);   // stash for collection
     const result = await predict(feature);
 
     const visibleLetter = result.not_detectable
@@ -523,6 +650,9 @@ async function predictFrame() {
     let stableLetter = "";
     if (result.accepted && !result.not_detectable) {
       stableLetter = updateStable(result.label);
+      if (stableLetter) {
+        checkPracticeTarget(stableLetter, false);
+      }
     } else {
       stable.textContent = "";
       history.length = 0;
@@ -640,5 +770,137 @@ btnSpeak.addEventListener("click", () => {
     const utter = new SpeechSynthesisUtterance(sentence);
     utter.rate = 0.9;
     window.speechSynthesis.speak(utter);
+  }
+});
+
+// ── Practice Input and Presets Listeners ─────────────────────────────
+
+function setPracticeTarget(text) {
+  practiceTargetText = text.trim().toUpperCase();
+  practiceTarget.textContent = practiceTargetText || "NONE";
+  practiceInput.value = practiceTargetText;
+  resetPracticeState();
+  
+  speakText(`New target set: ${practiceTargetText}`);
+}
+
+btnSetPractice.addEventListener("click", () => {
+  setPracticeTarget(practiceInput.value);
+});
+
+practiceInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    setPracticeTarget(practiceInput.value);
+  }
+});
+
+presetButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const preset = btn.getAttribute("data-preset");
+    if (preset) {
+      setPracticeTarget(preset);
+    }
+  });
+});
+
+// ── Common Phrases Listeners ──────────────────────────────────────────
+
+phraseButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const phrase = btn.getAttribute("data-phrase");
+    if (!phrase) return;
+    
+    // Switch to word mode to display sentence-panel and spelling buffer
+    if (currentMode !== "word") {
+      setMode("word");
+    }
+    
+    // Check if we need to prepend a space before the new phrase
+    if (spellingBuffer.length > 0 && spellingBuffer[spellingBuffer.length - 1] !== " ") {
+      spellingBuffer.push(" ");
+    }
+    
+    // Append the phrase letters to the buffer
+    for (const char of phrase) {
+      spellingBuffer.push(char);
+    }
+    
+    // Auto-append a space at the end of the phrase
+    spellingBuffer.push(" ");
+    
+    updateSentenceText();
+    
+    // Speak the phrase instantly
+    speakText(phrase);
+    
+    // Check if phrase matches target
+    checkPracticeTarget(phrase, true);
+  });
+});
+
+// ── Landmark Collection & Retraining Listeners ───────────────────────
+
+btnCollectSample.addEventListener("click", async () => {
+  if (!latestFeature) {
+    collectedCount.textContent = "⚠ No hand detected — show your sign first!";
+    return;
+  }
+
+  const label = collectLetterSelect.value;
+  btnCollectSample.disabled = true;
+  btnCollectSample.textContent = "Saving…";
+
+  try {
+    const res = await fetch("/add_sample", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label, feature: latestFeature }),
+    });
+    const data = await res.json();
+    collectedCount.textContent = `✔ ${label}: ${data.count} sample${data.count > 1 ? "s" : ""} saved`;
+  } catch (err) {
+    collectedCount.textContent = `❌ Error: ${err.message}`;
+  } finally {
+    btnCollectSample.disabled = false;
+    btnCollectSample.textContent = "📸 Capture Pose";
+  }
+});
+
+btnTrainModel.addEventListener("click", async () => {
+  btnTrainModel.disabled = true;
+  btnTrainModel.textContent = "⏳ Training…";
+  collectedCount.textContent = "Retraining model — this may take a minute…";
+
+  try {
+    const res = await fetch("/retrain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    const data = await res.json();
+
+    if (!data.ok) {
+      collectedCount.textContent = `❌ Training failed — check server logs`;
+      return;
+    }
+
+    // Hot-reload the ONNX model & all metadata with cache-busting
+    const t = Date.now();
+    onnxSession = await ort.InferenceSession.create(
+      `./model/isl_az_live_svm.onnx?t=${t}`,
+      { executionProviders: ["wasm"] }
+    );
+    classNames = await (await fetch(`./model/class_names.json?t=${t}`)).json();
+    modelClasses = await (await fetch(`./model/model_classes.json?t=${t}`)).json();
+    centroids = await (await fetch(`./model/centroids.json?t=${t}`)).json();
+    distanceThresholds = await (await fetch(`./model/distance_thresholds.json?t=${t}`)).json();
+
+    playSuccessChime();
+    collectedCount.textContent = `✅ Model retrained & reloaded!`;
+  } catch (err) {
+    collectedCount.textContent = `❌ Error: ${err.message}`;
+  } finally {
+    btnTrainModel.disabled = false;
+    btnTrainModel.textContent = "⚙️ Retrain & Deploy";
   }
 });

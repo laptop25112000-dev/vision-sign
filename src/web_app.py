@@ -17,6 +17,65 @@ from pathlib import Path
 from urllib.parse import unquote
 
 
+def add_collected_sample(label_str: str, feature_list: list[float]) -> int:
+    import numpy as np
+    
+    project_root = Path(__file__).resolve().parents[1]
+    data_dir = project_root / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    npz_path = data_dir / "webcam_landmarks_collected.npz"
+    
+    new_feat = np.array(feature_list, dtype=np.float32).reshape(1, -1)
+    label_id = ord(label_str.upper()) - ord("A")
+    new_label = np.array([label_id], dtype=np.int64)
+    
+    features = new_feat
+    labels = new_label
+    
+    if npz_path.exists():
+        try:
+            data = np.load(npz_path, allow_pickle=True)
+            old_feats = data["features"]
+            old_labels = data["labels"]
+            features = np.concatenate([old_feats, new_feat], axis=0)
+            labels = np.concatenate([old_labels, new_label], axis=0)
+        except Exception:
+            pass
+            
+    np.savez_compressed(
+        npz_path,
+        features=features,
+        labels=labels,
+        paths=np.array([f"webcam_collected_{i}" for i in range(len(labels))]),
+        class_names=np.array(list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+    )
+    
+    count = int(np.sum(labels == label_id))
+    return count
+
+
+def run_retraining() -> tuple[bool, str]:
+    import subprocess
+    import sys
+    
+    project_root = Path(__file__).resolve().parents[1]
+    retrain_script = project_root / "tools" / "retrain.py"
+    
+    try:
+        res = subprocess.run(
+            [sys.executable, str(retrain_script), "--classes", "ALL"],
+            capture_output=True,
+            text=True,
+            cwd=str(project_root),
+            check=True
+        )
+        return True, res.stdout
+    except subprocess.CalledProcessError as err:
+        return False, f"{err.stderr}\n{err.stdout}"
+    except Exception as exc:
+        return False, str(exc)
+
+
 def require_dependencies():
     os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
     try:
@@ -230,6 +289,32 @@ class ISLRequestHandler(SimpleHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
             ok, reason = speak_text(str(payload.get("text", "")))
             response = {"ok": ok, "reason": reason}
+            body = json.dumps(response).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.safe_write(body)
+            return
+
+        if self.path == "/add_sample":
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+            label = payload.get("label", "A")
+            feature = payload.get("feature", [])
+            count = add_collected_sample(label, feature)
+            response = {"ok": True, "count": count}
+            body = json.dumps(response).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.safe_write(body)
+            return
+
+        if self.path == "/retrain":
+            ok, output = run_retraining()
+            response = {"ok": ok, "output": output}
             body = json.dumps(response).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")

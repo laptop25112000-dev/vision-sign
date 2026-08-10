@@ -1144,3 +1144,264 @@ video {
 .sentence-btn.primary:hover {
   background: #86efac;
 }
+
+/* ── Practice Challenge Card & Common Phrases Card ───────────────── */
+
+.practice-card,
+.common-phrases-card {
+  padding: 14px;
+  border: 1px solid #2d3a42;
+  background: #0c1115;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.practice-card span,
+.common-phrases-card span {
+  display: block;
+  color: #9fadb5;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.practice-prompt-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(23, 34, 39, 0.6);
+  border: 1px solid rgba(45, 58, 66, 0.4);
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 300ms ease;
+}
+
+.practice-prompt-container.matched {
+  border-color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.15);
+  box-shadow: 0 0 15px rgba(110, 231, 183, 0.3);
+  animation: successPulse 600ms ease-out 1;
+}
+
+.practice-target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.practice-target .target-label {
+  color: #9fadb5;
+  font-size: 12px;
+  text-transform: none;
+  font-weight: normal;
+}
+
+#practiceTarget {
+  color: #f7c948;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+#practiceStatus {
+  font-size: 13px;
+  font-weight: 700;
+  color: #aebbc2;
+  transition: color 150ms ease;
+}
+
+.practice-prompt-container.matched #practiceStatus {
+  color: #6ee7b7;
+}
+
+.practice-input-group {
+  display: flex;
+  gap: 6px;
+}
+
+#practiceInput {
+  flex: 1;
+  padding: 8px 10px;
+  background: #172227;
+  border: 1px solid #2d3a42;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  transition: all 150ms;
+}
+
+#practiceInput:focus {
+  outline: none;
+  border-color: #6ee7b7;
+  background: #1e2d34;
+}
+
+.practice-action-btn {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #6ee7b7;
+  color: #0c1115;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.practice-action-btn:hover {
+  background: #86efac;
+}
+
+.practice-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset-btn {
+  padding: 6px 10px;
+  border: 1px solid rgba(45, 58, 66, 0.6);
+  border-radius: 4px;
+  background: rgba(23, 34, 39, 0.3);
+  color: #aebbc2;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.preset-btn:hover {
+  background: rgba(45, 58, 66, 0.6);
+  color: #fff;
+  border-color: #6ee7b7;
+}
+
+.phrase-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phrase-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #2d3a42;
+  border-radius: 6px;
+  background: #172227;
+  color: #e2edf2;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.phrase-btn:hover {
+  background: #25353d;
+  border-color: #6ee7b7;
+  transform: translateX(2px);
+}
+
+@keyframes successPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* ── Landmark Collection Card ────────────────────────────────────── */
+
+.collection-card {
+  padding: 14px;
+  border: 1px solid #2d3a42;
+  background: #0c1115;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.collection-controls {
+  display: flex;
+  gap: 8px;
+}
+
+#collectLetterSelect {
+  flex: 0 0 70px;
+  padding: 8px;
+  background: #172227;
+  border: 1px solid #2d3a42;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+#collectLetterSelect:focus {
+  border-color: #6ee7b7;
+}
+
+.collect-action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #f7c948;
+  color: #0c1115;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.collect-action-btn:hover {
+  background: #ffd95f;
+}
+
+.collection-status {
+  padding: 8px 10px;
+  background: rgba(23, 34, 39, 0.4);
+  border: 1px solid rgba(45, 58, 66, 0.3);
+  border-radius: 6px;
+  text-align: center;
+}
+
+#collectedCount {
+  display: block;
+  color: #aebbc2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.retrain-action-btn {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #6ee7b7;
+  color: #0c1115;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  box-shadow: 0 4px 12px rgba(110, 231, 183, 0.15);
+}
+
+.retrain-action-btn:hover {
+  background: #86efac;
+}
+
+.retrain-action-btn:disabled {
+  background: #20352c;
+  color: #6a8275;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+

@@ -78,6 +78,78 @@
             </div>
           </div>
 
+          <div class="practice-card">
+            <span>Practice Challenge</span>
+            <div class="practice-prompt-container">
+              <div class="practice-target">
+                <span class="target-label">Target:</span>
+                <strong id="practiceTarget">CAT</strong>
+              </div>
+              <div class="practice-status" id="practiceStatus">Not started</div>
+            </div>
+            <div class="practice-input-group">
+              <input id="practiceInput" type="text" placeholder="Type target..." value="CAT" />
+              <button id="btnSetPractice" class="practice-action-btn" type="button">Set</button>
+            </div>
+            <div class="practice-presets">
+              <button class="preset-btn" data-preset="A" type="button">A</button>
+              <button class="preset-btn" data-preset="CAT" type="button">CAT</button>
+              <button class="preset-btn" data-preset="RAT" type="button">RAT</button>
+              <button class="preset-btn" data-preset="HELLO" type="button">HELLO</button>
+              <button class="preset-btn" data-preset="NAMASTE" type="button">NAMASTE</button>
+            </div>
+          </div>
+
+          <div class="common-phrases-card">
+            <span>Common Phrases</span>
+            <div class="phrase-buttons">
+              <button class="phrase-btn" data-phrase="HELLO" type="button">👋 Hello</button>
+              <button class="phrase-btn" data-phrase="NAMASTE" type="button">🙏 Namaste</button>
+              <button class="phrase-btn" data-phrase="WHAT'S YOUR NAME?" type="button">❓ What's your name?</button>
+              <button class="phrase-btn" data-phrase="HOW ARE YOU?" type="button">😊 How are you?</button>
+              <button class="phrase-btn" data-phrase="THANK YOU" type="button">👍 Thank you</button>
+            </div>
+          </div>
+
+          <div class="collection-card">
+            <span>Add Training Samples</span>
+            <div class="collection-controls">
+              <select id="collectLetterSelect">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="G">G</option>
+                <option value="H">H</option>
+                <option value="I">I</option>
+                <option value="J">J</option>
+                <option value="K">K</option>
+                <option value="L">L</option>
+                <option value="M" selected>M</option>
+                <option value="N">N</option>
+                <option value="O">O</option>
+                <option value="P">P</option>
+                <option value="Q">Q</option>
+                <option value="R">R</option>
+                <option value="S">S</option>
+                <option value="T">T</option>
+                <option value="U">U</option>
+                <option value="V">V</option>
+                <option value="W">W</option>
+                <option value="X">X</option>
+                <option value="Y">Y</option>
+                <option value="Z">Z</option>
+              </select>
+              <button id="btnCollectSample" class="collect-action-btn" type="button">📸 Capture Pose</button>
+            </div>
+            <div class="collection-status">
+              <span id="collectedCount">Pose samples saved: 0</span>
+            </div>
+            <button id="btnTrainModel" class="retrain-action-btn" type="button">⚙️ Retrain & Deploy</button>
+          </div>
+
           <div class="metrics">
             <div>
               <span>Letter</span>
